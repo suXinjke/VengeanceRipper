@@ -152,6 +152,7 @@ List of options:
     --no-inverse-axis   Do not invert Y axis
     --no-subdirectories Do not separate output by directories
     --no-textures       Do not output texture data
+    --no-duplicate-mtl       Do not duplicate mtl files for each LOD model
 `
 
 async function main() {
@@ -192,6 +193,7 @@ async function main() {
     const no_inverse_axis = process.argv.includes( '--no-inverse-axis' )
     const no_subdirectories = process.argv.includes( '--no-subdirectories' )
     const no_textures = process.argv.includes( '--no-textures' )
+    const no_duplicate_mtl = process.argv.includes( '--no-duplicate-mtl' )
     const no_lods = process.argv.includes( '--no-lods' )
 
     const lods = require( './lods' )
@@ -216,11 +218,11 @@ async function main() {
             [ [ ...new Array( model.data.tmds.length ) ].map( ( _, index ) => index ) ]
         )
 
-        const objs = obj_packs.slice( 0, no_lods ? 1 : undefined ).map( obj_pack => {
+        const objs = obj_packs.slice( 0, no_lods ? 1 : undefined ).map( ( obj_pack, obj_pack_index ) => {
 
             let obj = ''
             if ( no_textures === false ) {
-                obj += `mtllib ${file_name}.mtl\n`
+                obj += `mtllib ${file_name}${no_duplicate_mtl ? '' : `_${obj_pack_index}`}.mtl\n`
             }
 
             let vertex_offset = 0
@@ -321,7 +323,11 @@ async function main() {
         }
 
         if ( no_textures === false ) {
-            await fs.writeFile( path.join( model_output_directory, `${file_name}.mtl` ), mtl )
+            const file_names = no_duplicate_mtl ? [ `${file_name}.mtl` ] : [ ...new Array( objs.length ) ].map( ( _, index ) => `${file_name}_${index}.mtl` )
+
+            for ( const file_name of file_names ) {
+                await fs.writeFile( path.join( model_output_directory, file_name ), mtl )
+            }
         }
 
         for ( let index = 0 ; index < objs.length ; index++ ) {
